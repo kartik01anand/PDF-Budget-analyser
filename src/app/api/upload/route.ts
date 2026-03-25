@@ -41,9 +41,11 @@ export async function POST(req: NextRequest) {
 
 async function triggerN8nBatch(batchId: string, files: File[]) {
   const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL;
-  const CALLBACK_URL = `${process.env.NEXT_PUBLIC_APP_URL}/api/callback`;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+  const CALLBACK_URL = `${appUrl}/api/callback`;
   
   console.log(`[UPLOAD] Starting n8n trigger for batch ${batchId} with ${files.length} files`);
+  console.log(`[UPLOAD] Callback URL set to: ${CALLBACK_URL}`);
 
   if (!N8N_WEBHOOK_URL) {
     console.log(`[SIMULATION] n8n triggered for batch ${batchId} with ${files.length} files`);
