@@ -10,6 +10,23 @@ export default function Home() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
+  // Initial fetch
+  useEffect(() => {
+    async function fetchInitialJobs() {
+      try {
+        const response = await fetch('/api/status');
+        if (!response.ok) throw new Error("Initial fetch failed");
+        const data = await response.json();
+        // Filter out legacy jobs that don't have files to prevent crashes
+        const validJobs = data.filter((j: any) => Array.isArray(j.files));
+        setJobs(validJobs);
+      } catch (error) {
+        console.error("Initial fetch error:", error);
+      }
+    }
+    fetchInitialJobs();
+  }, []);
+
   // Polling logic
   useEffect(() => {
     const activeJobs = jobs.filter(j => j.status !== 'completed' && j.status !== 'failed');

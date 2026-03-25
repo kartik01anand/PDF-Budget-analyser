@@ -1,41 +1,31 @@
-import fs from 'fs';
-import path from 'path';
 import { Job } from '@/types';
 
-// Vercel only allows writing to /tmp
-const JOBS_FILE = process.env.VERCEL ? path.join('/tmp', 'jobs.json') : path.join(process.cwd(), 'jobs.json');
+// In-memory store for active jobs (resets on server restart/refresh on Vercel)
+const jobsMap = new Map<string, Job>();
 
 export function getJobs(): Job[] {
-  try {
-    if (!fs.existsSync(JOBS_FILE)) {
-      return [];
-    }
-    const data = fs.readFileSync(JOBS_FILE, 'utf8');
-    return JSON.parse(data);
-  } catch (e) {
-    console.error('Error reading jobs:', e);
-    return [];
-  }
+  return Array.from(jobsMap.values()).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 }
 
 export function saveJobs(jobs: Job[]) {
-  try {
-    fs.writeFileSync(JOBS_FILE, JSON.stringify(jobs, null, 2));
-  } catch (e) {
-    console.error('Error saving jobs:', e);
-  }
+  if (!Array.isArray(jobs)) return;
+  // Overwrite existing jobs in the map
+  // Note: This matches the old behavior of saving the full list, 
+  // but we should ideally update individual jobs.
+  jobs.forEach(job => {
+    jobsMap.set(job.id, job);
+  });
 }
 
 export function updateJob(id: string, updates: Partial<Job>) {
-  const jobs = getJobs();
-  const index = jobs.findIndex(j => j.id === id);
-  if (index !== -1) {
-    jobs[index] = { ...jobs[index], ...updates };
-    saveJobs(jobs);
+  const job = jobsMap.get(id);
+  if (job) {
+    jobsMap.set(id, { ...job, ...updates });
   }
 }
 
 export function addJobs(newJobs: Job[]) {
-  const jobs = getJobs();
-  saveJobs([...jobs, ...newJobs]);
+  newJobs.forEach(job => {
+    jobsMap.set(job.id, job);
+  });
 }

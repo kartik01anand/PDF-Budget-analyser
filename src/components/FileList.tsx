@@ -57,7 +57,7 @@ export default function FileList({ jobs }: FileListProps) {
                      Batch {job.id.slice(0, 8)}
                    </h3>
                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-1">
-                     {job.files.length} Files • {new Date(job.timestamp).toLocaleTimeString()}
+                     {job.files?.length || 0} Files • {new Date(job.timestamp).toLocaleTimeString()}
                    </p>
                 </div>
               </div>
@@ -71,7 +71,7 @@ export default function FileList({ jobs }: FileListProps) {
             </div>
 
             <div className="space-y-3">
-              {job.files.map((file, idx) => (
+              {(job.files || []).map((file, idx) => (
                 <div key={idx} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 transition-all hover:bg-white/10 group/file">
                    <div className="flex items-center space-x-4 overflow-hidden">
                      <FileText className="w-4 h-4 text-gray-500 group-hover/file:text-blue-400 transition-colors" />
@@ -88,7 +88,7 @@ export default function FileList({ jobs }: FileListProps) {
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
                       )}
-                      <span className="text-[10px] font-black text-gray-500 block w-8 text-right">{file.progress}%</span>
+                      <span className="text-[10px] font-black text-gray-400 block w-8 text-right">{file.progress}%</span>
                    </div>
                 </div>
               ))}

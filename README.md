@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+This is a [Next.js](https://nextjs.org) project for PDF Budget Extraction, integrated with n8n.
 
-## Getting Started
+## Local Setup
 
-First, run the development server:
-
+### 1. Install Dependencies
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Configure Environment Variables
+Create a `.env.local` file in the root directory:
+```env
+# The n8n webhook URL to trigger the extraction
+N8N_WEBHOOK_URL=your_n8n_webhook_url
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+# The public URL of your app (used by n8n for callbacks)
+# During local development, use an ngrok URL
+NEXT_PUBLIC_APP_URL=https://your-ngrok-subdomain.ngrok-free.dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. Run ngrok (For Local Callbacks)
+Since the extraction process happens on an external n8n server, it needs to call back to your local machine to update the status.
 
-## Learn More
+**Installation options:**
+- **Homebrew**: `brew install ngrok`
+- **NPM**: `npm install -g ngrok`
+- **Direct Download**: Download the binary from [ngrok.com](https://ngrok.com/download)
 
-To learn more about Next.js, take a look at the following resources:
+**Steps:**
+1. Start ngrok on port 3000:
+   ```bash
+   ngrok http 3000
+   ```
+2. Copy the `Forwarding` URL (looks like `https://...ngrok-free.dev`) and paste it as `NEXT_PUBLIC_APP_URL` in your `.env.local`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 4. Start Development Server
+```bash
+pnpm dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Architecture
+- **Frontend**: Next.js (App Router) with Tailwind CSS.
+- **Backend**: Next.js API Routes for triggering n8n and receiving callbacks.
+- **Orchestration**: n8n handles the heavy lifting of PDF parsing and sheet synchronization.
+- **Database**: `jobs.json` acts as a simplified local database for tracking job states.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Important Note on jobs.json
+Avoid manual editing of `jobs.json` while the server is running, as it may cause file corruption or data loss during concurrent writes.
