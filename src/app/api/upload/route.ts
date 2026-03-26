@@ -1,45 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { v4 as uuidv4 } from 'uuid';
-import { Job } from '@/types';
-import { addJobs } from '@/lib/jobs';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
-    const files = formData.getAll('files') as File[];
-
-    if (!files || files.length === 0) {
-      return NextResponse.json({ error: "No files uploaded" }, { status: 400 });
-    }
-
-    const batchId = uuidv4();
-    
-    const newBatch: Job = {
-      id: batchId,
-      files: files.map(file => ({
-        name: file.name,
-        size: file.size,
-        status: 'uploading',
-        progress: 0,
-      })),
-      status: 'uploading',
-      progress: 0,
-      timestamp: Date.now(),
+    const { files } = await req.json() as { 
+      files: { name: string; url: string; size: number }[] 
     };
 
-    addJobs([newBatch]);
+    if (!files || files.length === 0) {
+      return NextResponse.json({ error: "No files provided" }, { status: 400 });
+    }
 
-    // Trigger n8n with ALL files + batchId + callbackUrl
-    triggerN8nBatch(batchId, files);
+    // 1. Create the job in the execution_jobs table
+    const { data: job, error: jobError } = await supabaseAdmin
+      .from('execution_jobs')
+      .insert({
+        status: 'pending',
+        progress: 0
+      })
+      .select()
+      .single();
 
-    return NextResponse.json({ jobs: [newBatch] });
+    if (jobError) throw jobError;
+
+    // 2. Trigger n8n with batchId + file metadata
+    // We send the array of {name, url} so n8n can process them
+    triggerN8nBatch(job.id, files);
+
+    return NextResponse.json({ job });
   } catch (error) {
     console.error("Upload handler error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
-async function triggerN8nBatch(batchId: string, files: File[]) {
+async function triggerN8nBatch(batchId: string, files: { name: string; url: string; size: number }[]) {
   const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
   const CALLBACK_URL = `${appUrl}/api/callback`;
@@ -53,24 +48,26 @@ async function triggerN8nBatch(batchId: string, files: File[]) {
   }
 
   try {
-    const formData = new FormData();
-    formData.append('batchId', batchId);
-    formData.append('callbackUrl', CALLBACK_URL);
-    
-    // Use the same key 'files' for all files. 
-    // n8n Webhook will see this as binary.files_0, binary.files_1, etc.
-    files.forEach((file) => {
-      formData.append('files', file);
-    });
-
-    console.log(`[UPLOAD] Sending POST to ${N8N_WEBHOOK_URL}`);
+    // Send JSON to n8n instead of FormData since files are already in Storage
     const response = await fetch(N8N_WEBHOOK_URL, {
       method: 'POST',
-      body: formData,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        batchId,
+        callbackUrl: CALLBACK_URL,
+        files // [{name, url, size}, ...]
+      }),
     });
 
     if (response.ok) {
       console.log(`[UPLOAD] Successfully triggered n8n for batch ${batchId}`);
+      
+      // Update status to 'processing' now that n8n has it
+      await supabaseAdmin
+        .from('execution_jobs')
+        .update({ status: 'processing', progress: 10 })
+        .eq('id', batchId);
+        
     } else {
       const errorText = await response.text();
       console.error(`[UPLOAD] n8n responded with error: ${response.status} - ${errorText}`);

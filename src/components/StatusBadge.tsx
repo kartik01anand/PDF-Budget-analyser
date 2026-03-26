@@ -2,6 +2,7 @@ import { JobStatus } from "@/types";
 
 export function StatusBadge({ status }: { status: JobStatus }) {
   const styles = {
+    pending: "bg-white/5 text-gray-500 border-white/10",
     queued: "bg-white/5 text-gray-400 border-white/10",
     uploading: "bg-blue-500/10 text-blue-400 border-blue-500/20 animate-pulse",
     processing: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20 animate-pulse",

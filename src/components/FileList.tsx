@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { FileText, ExternalLink, AlertCircle, Clock, Loader2, Files } from "lucide-react";
+import { FileText, UserCheck, DollarSign, Clock, Loader2, Files, ExternalLink } from "lucide-react";
 import { Job } from "@/types";
 import { StatusBadge } from "./StatusBadge";
 
@@ -35,7 +35,7 @@ export default function FileList({ jobs }: FileListProps) {
       </div>
       
       <div className="grid gap-8">
-        {jobs.sort((a, b) => b.timestamp - a.timestamp).map((job, i) => (
+        {jobs.map((job, i) => (
           <div
             key={job.id}
             className="group glass-card rounded-[2.5rem] p-8 border border-white/10 shadow-3xl relative overflow-hidden transition-all duration-500 hover:border-blue-500/30"
@@ -57,7 +57,7 @@ export default function FileList({ jobs }: FileListProps) {
                      Batch {job.id.slice(0, 8)}
                    </h3>
                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-1">
-                     {job.files?.length || 0} Files • {new Date(job.timestamp).toLocaleTimeString()}
+                     {job.extractions?.length || 0} Results • {job.created_at ? new Date(job.created_at).toLocaleTimeString() : 'Pending'}
                    </p>
                 </div>
               </div>
@@ -70,34 +70,51 @@ export default function FileList({ jobs }: FileListProps) {
               </div>
             </div>
 
-            <div className="space-y-3">
-              {(job.files || []).map((file, idx) => (
-                <div key={idx} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 transition-all hover:bg-white/10 group/file">
-                   <div className="flex items-center space-x-4 overflow-hidden">
-                     <FileText className="w-4 h-4 text-gray-500 group-hover/file:text-blue-400 transition-colors" />
-                     <span className="text-sm font-semibold text-gray-300 truncate tracking-tight">{file.name}</span>
+            <div className="space-y-4">
+              {(job.extractions || []).map((ext, idx) => (
+                <div key={idx} className="flex flex-col p-5 rounded-2xl bg-white/5 border border-white/5 transition-all hover:bg-white/10 group/file">
+                   <div className="flex items-center justify-between mb-3">
+                     <div className="flex items-center space-x-4 overflow-hidden">
+                       <FileText className="w-4 h-4 text-gray-500 group-hover/file:text-blue-400 transition-colors" />
+                       <span className="text-sm font-semibold text-gray-200 truncate tracking-tight">{ext.pdf_name}</span>
+                     </div>
+                     <div className="flex items-center space-x-3">
+                        <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-green-500/20 text-green-400 border border-green-500/30 uppercase tracking-tighter">
+                          {ext.confidence} Confidence
+                        </span>
+                     </div>
                    </div>
-                   <div className="flex items-center space-x-4">
-                      {file.sheetLink && (
-                        <a 
-                          href={file.sheetLink} 
-                          target="_blank" 
-                          className="p-1.5 bg-green-500/10 text-green-400 rounded-lg border border-green-500/20 hover:bg-green-500/20 transition-all"
-                          title="Open Sheet"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      )}
-                      <span className="text-[10px] font-black text-gray-400 block w-8 text-right">{file.progress}%</span>
+                   
+                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-2">
+                      <div className="flex flex-col">
+                        <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">Budget</span>
+                        <span className="text-sm font-black text-blue-400 mt-0.5 flex items-center">
+                          <DollarSign className="w-3 h-3 mr-0.5" />
+                          {ext.budget.toLocaleString()} {ext.currency}
+                        </span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">Mentors</span>
+                        <span className="text-sm font-bold text-gray-300 mt-0.5 flex items-center">
+                          <UserCheck className="w-3 h-3 mr-1 text-gray-500" />
+                          {ext.mentor_count}
+                        </span>
+                      </div>
+                      <div className="flex flex-col col-span-2 text-right">
+                        <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">Identified Names</span>
+                        <span className="text-[11px] font-medium text-gray-400 mt-0.5 truncate italic">
+                          {ext.mentor_names || 'None identified'}
+                        </span>
+                      </div>
                    </div>
                 </div>
               ))}
             </div>
 
-            {job.status === 'completed' && job.sheetLink && (
+            {(job.extractions || []).length > 0 && job.sheet_link && (
                <div className="mt-8">
                  <a
-                    href={job.sheetLink}
+                    href={job.sheet_link}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full flex items-center justify-center space-x-3 py-4 bg-gradient-to-r from-green-500/20 to-emerald-600/20 hover:from-green-500/30 hover:to-emerald-600/30 text-green-400 rounded-2xl text-[11px] font-black tracking-widest uppercase transition-all border border-green-500/20 shadow-xl shadow-green-500/5 group/btn"
@@ -107,7 +124,7 @@ export default function FileList({ jobs }: FileListProps) {
                   </a>
                </div>
             )}
-            
+
             {job.status === 'processing' && (
               <div className="mt-8 flex items-center justify-center space-x-3 text-blue-400/60 font-bold text-[10px] tracking-widest uppercase">
                  <Loader2 className="w-4 h-4 animate-spin" />

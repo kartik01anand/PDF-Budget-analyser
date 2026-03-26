@@ -44,3 +44,8 @@ next-env.d.ts
 /audit-pdfs/
 jobs.json
 
+# test scripts
+generate_test_pdfs.js
+check_db.ts
+fetch_audit_data.ts
+
